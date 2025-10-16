@@ -29,10 +29,29 @@ const loginSchema = Joi.object({
   password: Joi.string().required()
 });
 
-// TODO: implement login function
 export async function login(req, res, next) {
- 
+  try {
+    // Validate input
+    const { value, error } = loginSchema.validate(req.body);
+    if (error) return res.status(400).json({ message: error.message });
+
+    // Check if user exists
+    const user = await User.findOne({ email: value.email });
+    if (!user) return res.status(401).json({ message: 'Invalid email or password' });
+
+    // Check password
+    const valid = await user.comparePassword(value.password);
+    if (!valid) return res.status(401).json({ message: 'Invalid email or password' });
+
+    // Sign and return token
+    const token = signToken(user);
+    res.json({ token, user: publicUser(user) });
+
+  } catch (err) {
+    next(err);
+  }
 }
+
 
 export async function me(req, res) {
   const user = await User.findById(req.user.id).lean();
